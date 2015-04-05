@@ -53,34 +53,12 @@ pub fn read_ppm<R, T>(mut reader: R) -> Result<T, PpmLoadError>
         return Err(PpmLoadError::FormatError);
     }
 
-    let mut reader_iter = reader.bytes().peekable();
+    let mut values = parse::PpmChannelValues::new(reader.bytes().peekable());
+    let width: u32 = try!(values.next().unwrap_or(Err(PpmLoadError::Truncated)));
+    let height: u32 = try!(values.next().unwrap_or(Err(PpmLoadError::Truncated)));
+    let depth: u32 = try!(values.next().unwrap_or(Err(PpmLoadError::Truncated)));
 
-    let mut width_buf = String::new();
-    try!(parse::consume_whitespace(&mut reader_iter));
-    try!(parse::read_number(&mut reader_iter, &mut width_buf));
-    let width: u32 = match width_buf.parse() {
-        Ok(width) => width,
-        Err(_) => return Err(PpmLoadError::OverflowError),
-    };
-
-    
-    let mut height_buf = String::new();
-    try!(parse::consume_whitespace(&mut reader_iter));
-    try!(parse::read_number(&mut reader_iter, &mut height_buf));
-    let height: u32 = match height_buf.parse() {
-        Ok(height) => height,
-        Err(_) => return Err(PpmLoadError::OverflowError),
-    };
-
-    let mut depth_buf = String::new();
-    try!(parse::consume_whitespace(&mut reader_iter));
-    try!(parse::read_number(&mut reader_iter, &mut depth_buf));
-    let depth: u32 = match depth_buf.parse() {
-        Ok(depth) => depth,
-        Err(_) => return Err(PpmLoadError::OverflowError),
-    };
-
-    let mut pixels = helpers::chunks(parse::PpmChannelValues::new(reader_iter))
+    let mut pixels = helpers::chunks(values)
         .map(|triple_res| triple_res.map(|triple| PpmPixel(triple[0], triple[1], triple[2])));
         
     FromPpm::from_ppm(width, height, depth, &mut pixels)

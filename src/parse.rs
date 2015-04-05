@@ -32,26 +32,6 @@ pub fn consume_whitespace<I>(peekable: &mut Peekable<I>) -> PpmLoadResult<()>
     Ok(())
 }
 
-pub fn read_number<I>(peekable: &mut Peekable<I>, buf: &mut String) -> PpmLoadResult<()>
-    where
-        I: Iterator<Item=io::Result<u8>> {
-
-    use std::char::from_u32;
-    loop {
-        match peekable.peek() {
-            Some(&Ok(byte)) if is_whitespace(byte) => break,
-            Some(&Ok(byte)) if is_number(byte) => {
-                let byte = peekable.next().unwrap().unwrap();
-                buf.push(from_u32(byte as u32).unwrap());
-            },
-            Some(&Ok(_)) => return Err(PpmLoadError::FormatError),
-            Some(&Err(_)) => return Err(PpmLoadError::Io(peekable.next().unwrap().err().unwrap())),
-            None => return Ok(()),
-        };
-    }
-    Ok(())
-}
-
 
 pub struct PpmChannelValues<R> where R: Read {
     bytes: Peekable<io::Bytes<R>>,
