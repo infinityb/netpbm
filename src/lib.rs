@@ -26,6 +26,7 @@ impl From<io::Error> for PpmLoadError {
 
 pub type PpmLoadResult<T> = Result<T, PpmLoadError>;
 
+
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub struct PpmPixel(pub u32, pub u32, pub u32);
 
@@ -72,7 +73,6 @@ pub fn load_ppm<T, P>(path: P) -> Result<T, PpmLoadError>
 
     read_ppm(try!(File::open(path)))
 }
-
 
 
 #[cfg(test)]
@@ -126,5 +126,26 @@ mod tests {
         assert_eq!(image.pixels[9],  PpmPixel(159, 164,  51));
         assert_eq!(image.pixels[10], PpmPixel(144,  70,  69));
         assert_eq!(image.pixels[11], PpmPixel( 90,  55, 133));
+    }
+
+    #[test]
+    fn afl_000000() {
+        let msg = b"P333333333333333\xf1\xf1\xf1\xf1\xf1\xf1\xf1\xf1\xf1\xf1\xf1\xf1\xf1\xf1\xf1\xf1\xf13";
+        let res: Result<MockImageType, _> = read_ppm(io::Cursor::new(&msg[..]));
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn afl_000001() {
+        let msg = b"P30\n3\n3\n3\n3\n3";
+        let res: Result<MockImageType, _> = read_ppm(io::Cursor::new(&msg[..]));
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn afl_000002() {
+        let msg = b"P333   \n3\n3\n3      6666666666666666666666666666\n3";
+        let res: Result<MockImageType, _> = read_ppm(io::Cursor::new(&msg[..]));
+        assert!(res.is_err());
     }
 }
