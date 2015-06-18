@@ -97,16 +97,16 @@ mod tests {
                     pixels: &mut Iterator<Item=PpmLoadResult<PpmPixel>>
                    ) -> PpmLoadResult<MockImageType> {
 
-            if 0xFFFF < width {
+            if 0xFFF < width {
                 return Err(PpmLoadError::FormatError)
             }
-            if 0xFFFF < height {
+            if 0xFFF < height {
                 return Err(PpmLoadError::FormatError)
             }
             if 0xFFFFF < width * height {
                 return Err(PpmLoadError::FormatError)
             }
-            
+
             let mut pixel_buf = Vec::with_capacity((width * height) as usize);
             for pixel in pixels {
                 pixel_buf.push(try!(pixel));
