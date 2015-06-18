@@ -5,7 +5,7 @@ use super::{PpmLoadResult, PpmLoadError};
 
 
 #[inline(always)]
-fn is_whitespace(byte: u8) -> bool {
+pub fn is_whitespace(byte: u8) -> bool {
     byte == b' ' || byte == b'\n'
 }
 
@@ -67,8 +67,14 @@ impl<R> Iterator for PpmChannelValues<R> where R: Read {
             match self.bytes.next() {
                 Some(Ok(digit)) if is_number(digit) => {
                     emit_number |= true;
-                    output *= 10;
-                    output += (digit - b'0') as u32;
+                    output = match output.checked_mul(10) {
+                        Some(output) => output,
+                        None => return Some(Err(PpmLoadError::OverflowError)),
+                    };
+                    output = match output.checked_add((digit - b'0') as u32) {
+                        Some(output) => output,
+                        None => return Some(Err(PpmLoadError::OverflowError)),
+                    };
                 },
                 Some(Ok(digit)) if is_whitespace(digit) => return Some(Ok(output)),
                 Some(Ok(_)) => {
@@ -85,8 +91,6 @@ impl<R> Iterator for PpmChannelValues<R> where R: Read {
         }
     }
 }
-
-
 
 
 #[cfg(test)]
