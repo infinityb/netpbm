@@ -61,6 +61,9 @@ pub fn read_ppm<R, T>(mut reader: R) -> Result<T, PpmLoadError>
     let width: u32 = try!(values.next().unwrap_or(Err(PpmLoadError::Truncated)));
     let height: u32 = try!(values.next().unwrap_or(Err(PpmLoadError::Truncated)));
     let depth: u32 = try!(values.next().unwrap_or(Err(PpmLoadError::Truncated)));
+    if width == 0 || height == 0 || depth == 0 {
+        return Err(PpmLoadError::FormatError);
+    }
 
     let mut pixels = helpers::chunks(values)
         .map(|triple_res| triple_res.map(|triple| PpmPixel(triple[0], triple[1], triple[2])));
@@ -80,7 +83,7 @@ pub fn load_ppm<T, P>(path: P) -> Result<T, PpmLoadError>
 
 #[cfg(test)]
 mod tests {
-    use super::{read_ppm, PpmPixel, PpmLoadResult, FromPpm};
+    use super::{read_ppm, PpmPixel, PpmLoadResult, PpmLoadError, FromPpm};
     use std::io;
 
     struct MockImageType {
@@ -94,11 +97,21 @@ mod tests {
                     pixels: &mut Iterator<Item=PpmLoadResult<PpmPixel>>
                    ) -> PpmLoadResult<MockImageType> {
 
+            if 0xFFFF < width {
+                return Err(PpmLoadError::FormatError)
+            }
+            if 0xFFFF < height {
+                return Err(PpmLoadError::FormatError)
+            }
+            if 0xFFFFF < width * height {
+                return Err(PpmLoadError::FormatError)
+            }
+            
             let mut pixel_buf = Vec::with_capacity((width * height) as usize);
             for pixel in pixels {
                 pixel_buf.push(try!(pixel));
             }
-
+            
             Ok(MockImageType {
                 width: width,
                 height: height,
@@ -148,6 +161,54 @@ mod tests {
     #[test]
     fn afl_000002() {
         let msg = b"P333   \n3\n3\n3      6666666666666666666666666666\n3";
+        let res: Result<MockImageType, _> = read_ppm(io::Cursor::new(&msg[..]));
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn afl_000003() {
+        let msg = b"P3\n33\n0\n33\n0\n33\n33\n0\n33\n0\n3";
+        let _: Result<MockImageType, _> = read_ppm(io::Cursor::new(&msg[..]));
+    }
+
+    #[test]
+    fn afl_000004() {
+        let msg = b"P3\n3\n0\n3\n3\n\n3\n3\n\xb3";
+        let res: Result<MockImageType, _> = read_ppm(io::Cursor::new(&msg[..]));
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn afl_000005() {
+        let msg = b"P3\n3\n3555555\n3\n\xa1";
+        let res: Result<MockImageType, _> = read_ppm(io::Cursor::new(&msg[..]));
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn afl_000006() {
+        let msg = b"P3\n3\n0\n3\n3\n\n3\n3\n\xb3";
+        let res: Result<MockImageType, _> = read_ppm(io::Cursor::new(&msg[..]));
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn afl_000007() {
+        let msg = b"P3\n0\n3\n\n3\n3\n33\n3";
+        let res: Result<MockImageType, _> = read_ppm(io::Cursor::new(&msg[..]));
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn afl_000008() {
+        let msg = b"P3\n3 999999999\n3";
+        let res: Result<MockImageType, _> = read_ppm(io::Cursor::new(&msg[..]));
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn afl_000009() {
+        let msg = b"P3 0 3 3 3 3 3 3 3 \xbe";
         let res: Result<MockImageType, _> = read_ppm(io::Cursor::new(&msg[..]));
         assert!(res.is_err());
     }
