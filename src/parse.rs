@@ -67,11 +67,11 @@ impl<R> Iterator for PpmChannelValues<R> where R: Read {
             match self.bytes.next() {
                 Some(Ok(digit)) if is_number(digit) => {
                     emit_number |= true;
-                    output = match output.checked_mul(10) {
-                        Some(output) => output,
-                        None => return Some(Err(PpmLoadError::OverflowError)),
-                    };
-                    output = match output.checked_add((digit - b'0') as u32) {
+                    let add_this = (digit - b'0') as u32;
+                    let output_res = output
+                        .checked_mul(10)
+                        .and_then(|o| o.checked_add(add_this));
+                    output = match output_res {
                         Some(output) => output,
                         None => return Some(Err(PpmLoadError::OverflowError)),
                     };
