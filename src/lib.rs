@@ -31,7 +31,7 @@ pub type PpmLoadResult<T> = Result<T, PpmLoadError>;
 pub struct PpmPixel(pub u32, pub u32, pub u32);
 
 
-pub trait FromPpm {
+pub trait FromPpm: Sized {
     fn from_ppm(width: u32, height: u32, depth: u32,
                 pixels: &mut Iterator<Item=PpmLoadResult<PpmPixel>>
                ) -> PpmLoadResult<Self>;
@@ -42,7 +42,7 @@ pub fn read_ppm<R, T>(mut reader: R) -> Result<T, PpmLoadError>
     where
         R: Read,
         T: FromPpm {
-    
+
     // TODO(sell): Is this OK?
     let mut header: [u8; 3] = [0, 0, 0];
     let header_read = try!(reader.read(&mut header));
@@ -67,7 +67,7 @@ pub fn read_ppm<R, T>(mut reader: R) -> Result<T, PpmLoadError>
 
     let mut pixels = helpers::chunks(values)
         .map(|triple_res| triple_res.map(|triple| PpmPixel(triple[0], triple[1], triple[2])));
-        
+
     FromPpm::from_ppm(width, height, depth, &mut pixels)
 }
 
@@ -111,7 +111,7 @@ mod tests {
             for pixel in pixels {
                 pixel_buf.push(try!(pixel));
             }
-            
+
             Ok(MockImageType {
                 width: width,
                 height: height,
